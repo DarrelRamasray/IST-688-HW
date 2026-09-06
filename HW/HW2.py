@@ -56,7 +56,7 @@ summary_type = st.sidebar.selectbox("Specify Output Format", ["100-Word Summary"
     label_visibility="collapsed",
 )
 
-st.sidebar.divider() #Separates the model section
+#st.sidebar.divider() #Separates the model section
 
 st.sidebar.subheader(":material/computer: Model Selection") #Section heading
 st.sidebar.caption("Select LLM provider") #Caption
