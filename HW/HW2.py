@@ -34,7 +34,7 @@ def escape_dollars(stream): #Escapes $ so Streamlit does not read it as LaTeX
     for text in stream:
         yield text.replace("$", "\\$")
 
-st.sidebar.header("**Settings:**")
+st.sidebar.header(":material/settings: **Settings:**")
 st.sidebar.caption("Configure Output Format & AI Model")
 
 #Output Type
