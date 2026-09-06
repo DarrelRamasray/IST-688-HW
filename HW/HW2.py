@@ -94,7 +94,6 @@ if generate and not inputs_ready: #Error shown when either sidebar selection is 
     st.error("Error! Please choose a summary format before generating.")
 
 @st.cache_data #Caches result
-
 def is_valid_key(provider: str, key: str) -> bool: #Validation function, now checks against the selected provider
     try:
         if provider == "OpenAI":
@@ -102,7 +101,8 @@ def is_valid_key(provider: str, key: str) -> bool: #Validation function, now che
         else:
             Anthropic(api_key=key).models.list() #Checks key
         return True
-    except Exception:
+    except Exception as e:
+        st.exception(e) #TEMP: shows the real validation error
         return False
 
 secret_names = {"OpenAI": "OPENAI_API_KEY", "Anthropic": "ANTHROPIC_API_KEY"} #Maps each provider to its secrets.toml entry
