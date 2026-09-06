@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 
 def read_url_content(url):  #Reads a web page into a single string
     try:
-        response = requests.get(url)
+        #response = requests.get(url)
+        response = requests.get(url, headers={"User-Agent": "IST688-HW2/1.0"}) #Some sites block the default requests user agent
         response.raise_for_status()  #Raise an exception for HTTP errors
         soup = BeautifulSoup(response.content, 'html.parser')
         return soup.get_text()
