@@ -1,3 +1,5 @@
 streamlit
 openai
 pypdf
+beautifulsoup4
+requests
