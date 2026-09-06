@@ -56,9 +56,6 @@ else:
     )
 
     if uploaded_file and question:
-
-        # Process the uploaded file and question.
-        #***
         file_extension = uploaded_file.name.split('.')[-1]  #Grabs whatever follows the last dot
         if file_extension == 'txt': #For .txt files
             document = uploaded_file.read().decode()  #Decodes the raw bytes into a string

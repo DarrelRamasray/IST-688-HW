@@ -17,6 +17,11 @@ def read_url_content(url):  #Reads a web page into a single string
         print(f"Error reading {url}: {e}")  #Error displayed #st.error(f"Error reading {url}: {e}")
         return None
 
+def escape_dollars(stream): #Escapes $ so Streamlit does not read it as LaTeX
+    for chunk in stream:
+        text = chunk.choices[0].delta.content or "" #Pulls the text out of each chunk
+        yield text.replace("$", "\\$")
+
 st.sidebar.header("**Settings:**")
 st.sidebar.caption("Configure Output Format & AI Model")
 
@@ -108,4 +113,4 @@ else:
                 stream=True,
             )
             #Stream the response to the app using `st.write_stream`.
-            st.write_stream(stream)
+            st.write_stream(escape_dollars(stream))
