@@ -1,5 +1,6 @@
 streamlit
 openai
+anthropic
 pypdf
 beautifulsoup4
 requests
