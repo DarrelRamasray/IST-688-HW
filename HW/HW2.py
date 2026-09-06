@@ -102,7 +102,7 @@ def is_valid_key(provider: str, key: str) -> bool: #Validation function, now che
             Anthropic(api_key=key).models.list() #Checks key
         return True
     except Exception as e:
-        st.exception(e) #TEMP: shows the real validation error
+        #st.exception(e) #TEMP: show validation error
         return False
 
 secret_names = {"OpenAI": "OPENAI_API_KEY", "Anthropic": "ANTHROPIC_API_KEY"} #Maps each provider to its secrets.toml entry
