@@ -4,6 +4,7 @@
 
 import streamlit as st
 from openai import OpenAI
+from anthropic import Anthropic #Second LLM provider
 import requests
 from bs4 import BeautifulSoup
 
@@ -17,9 +18,20 @@ def read_url_content(url):  #Reads a web page into a single string
         print(f"Error reading {url}: {e}")  #Error displayed #st.error(f"Error reading {url}: {e}")
         return None
 
+def stream_text(provider, key, model, messages):
+    if provider == "OpenAI":
+        client = OpenAI(api_key=key)
+        stream = client.chat.completions.create(model=model, messages=messages, stream=True)
+        for chunk in stream:
+            yield chunk.choices[0].delta.content or "" #Pulls the text out of each chunk
+    else:
+        client = Anthropic(api_key=key)
+        with client.messages.stream(model=model, max_tokens=1024, messages=messages) as stream:
+            for text in stream.text_stream: #Anthropic yields plain text already
+                yield text
+
 def escape_dollars(stream): #Escapes $ so Streamlit does not read it as LaTeX
-    for chunk in stream:
-        text = chunk.choices[0].delta.content or "" #Pulls the text out of each chunk
+    for text in stream:
         yield text.replace("$", "\\$")
 
 st.sidebar.header("**Settings:**")
@@ -47,13 +59,25 @@ summary_type = st.sidebar.selectbox("Specify Output Format", ["100-Word Summary"
 st.sidebar.divider() #Separates the model section
 
 st.sidebar.subheader(":material/computer: Model Selection") #Section heading
+st.sidebar.caption("Select LLM provider") #Caption
+provider = st.sidebar.selectbox("Provider", ["OpenAI", "Anthropic"],
+    index=0, #OpenAI preselected
+    label_visibility="collapsed",
+)
+
+models = {
+    "OpenAI": {"basic": "gpt-5.4-nano", "advanced": "gpt-5.4-mini",
+               "basic_label": "GPT-5.4 Nano", "advanced_label": "GPT-5.4 Mini"},
+    "Anthropic": {"basic": "claude-haiku-4-5-20251001", "advanced": "claude-sonnet-5",
+                  "basic_label": "Claude Haiku 4.5", "advanced_label": "Claude Sonnet 5"},
+} #Maps each provider to its basic and advanced model
 
 use_advanced = st.sidebar.checkbox("Use Advanced Model", value=False)
-basic_model = "gpt-5.4-nano" #Model used by default
-advanced_model = "gpt-5.4-mini" #Model used when the box is checked
-selected_model = advanced_model if use_advanced else basic_model #Model selection sent to the API
+tier = "advanced" if use_advanced else "basic" #Which tier the checkbox points to
+selected_model = models[provider][tier] #Model selection sent to the API
+selected_label = models[provider][tier + "_label"]
 
-st.sidebar.caption("_Now using model GPT-5.4 Mini_" if use_advanced else "_You are using model GPT-5.4 Nano_") #Shows which model is active
+st.sidebar.caption(f"_You are using model {selected_label}_") #Shows which model is active
 
 generate = st.sidebar.button("Generate Summary", type="primary") #Nothing is sent to the API until this is clicked
 
@@ -70,14 +94,19 @@ if generate and not inputs_ready: #Error shown when either sidebar selection is 
     st.error("Error! Please choose a summary format before generating.")
 
 @st.cache_data #Caches result
-def is_valid_key(key: str) -> bool: #Validation function
+
+def is_valid_key(provider: str, key: str) -> bool: #Validation function, now checks against the selected provider
     try:
-        OpenAI(api_key=key).models.list() #Checks key
+        if provider == "OpenAI":
+            OpenAI(api_key=key).models.list() #Checks key
+        else:
+            Anthropic(api_key=key).models.list() #Checks key
         return True
     except Exception:
         return False
 
-openai_api_key = st.secrets.get("OPENAI_API_KEY", "")  #Key read from .streamlit/secrets.toml (or App settings > Secrets)
+secret_names = {"OpenAI": "OPENAI_API_KEY", "Anthropic": "ANTHROPIC_API_KEY"} #Maps each provider to its secrets.toml entry
+api_key = st.secrets.get(secret_names[provider], "")  #Key read from .streamlit/secrets.toml (or App settings > Secrets)
 
 summary_instructions = {
     "100-Word Summary": "Summarize the document in about 100 words.",
@@ -85,17 +114,15 @@ summary_instructions = {
     "5-Bullet Summary": "Summarize the document in 5 bullet points.",
 } #Maps selection to the instruction sent to the LLM
 
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-elif not is_valid_key(openai_api_key): #Validate the API key when entered
-    st.error("Invalid API key. Please try again.") #Error displayed
+if not api_key:
+    st.info(f"Please add your {provider} API key to continue.", icon="🗝️")
+elif not is_valid_key(provider, api_key): #Validate the API key when the provider changes
+    st.error(f"Invalid {provider} API key. Please try again.") #Error displayed
 else:
     st.success("Access granted!") #Confirmation
-    client = OpenAI(api_key=openai_api_key)
-    url = st.text_input("Enter a URL",placeholder="https://example.com",) #URL is entered at the top of the page
+    url = st.text_input("Enter a URL",placeholder="https://example.com",)
 
     if url and generate and inputs_ready: #Runs once a URL is entered and selections are made
-        #Process the URL and the sidebar selections.
         document = read_url_content(url) #Pulls the text off the page
         if not document: #Nothing usable came back
             st.stop() #Stops the run
@@ -105,24 +132,6 @@ else:
                 "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]} Write the entire summary in {language}.", #Summary format and output language are now the instruction
             }
         ]
-        
-        #messages = [
-        #    {
-        #        "role": "system",
-        #        "content": f"You are a summarizer. Write your entire response in {language}, regardless of the language of the source document.",
-        #    },
-        #    {
-        #        "role": "user",
-        #        "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]}",
-        #    }
-        #]
 
-        if selected_model: #No generation until user selects a model
-            #Generate an answer using the OpenAI API.
-            stream = client.chat.completions.create(
-                model=selected_model,
-                messages=messages,
-                stream=True,
-            )
-            #Stream the response to the app using `st.write_stream`.
-            st.write_stream(escape_dollars(stream))
+        if selected_model:
+            st.write_stream(escape_dollars(stream_text(provider, api_key, selected_model, messages))) #Streams from whichever provider is selected
