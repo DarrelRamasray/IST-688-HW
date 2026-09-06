@@ -99,22 +99,24 @@ else:
         document = read_url_content(url) #Pulls the text off the page
         if not document: #Nothing usable came back
             st.stop() #Stops the run
-        ###messages = [
-        #    {
-        #        "role": "user",
-        #        "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]} Write the entire summary in {language}.", #Summary format and output language are now the instruction
-        #    }
         messages = [
             {
-                "role": "system",
-                "content": f"You are a summarizer. Write your entire response in {language}, regardless of the language of the source document.",
-            },
-            {
                 "role": "user",
-                "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]}",
+                "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]} Write the entire summary in {language}.", #Summary format and output language are now the instruction
             }
         ]
         
+        #messages = [
+        #    {
+        #        "role": "system",
+        #        "content": f"You are a summarizer. Write your entire response in {language}, regardless of the language of the source document.",
+        #    },
+        #    {
+        #        "role": "user",
+        #        "content": f"Here's a document: {document} \n\n---\n\n {summary_instructions[summary_type]}",
+        #    }
+        #]
+
         if selected_model: #No generation until user selects a model
             #Generate an answer using the OpenAI API.
             stream = client.chat.completions.create(
