@@ -15,7 +15,8 @@ def read_url_content(url):  #Reads a web page into a single string
         soup = BeautifulSoup(response.content, 'html.parser')
         return soup.get_text()
     except requests.RequestException as e:
-        print(f"Error reading {url}: {e}")  #Error displayed #st.error(f"Error reading {url}: {e}")
+        #print(f"Error reading {url}: {e}")
+        st.error(f"Error reading {url}: {e}")  #Error displayed on screen instead
         return None
 
 def stream_text(provider, key, model, messages):
@@ -121,6 +122,8 @@ elif not is_valid_key(provider, api_key): #Validate the API key when the provide
 else:
     st.success("Access granted!") #Confirmation
     url = st.text_input("Enter a URL",placeholder="https://example.com",)
+    if generate and inputs_ready and not url: #Error shown when the URL box is empty
+        st.error("Error! Please enter a URL before generating.")
 
     if url and generate and inputs_ready: #Runs once a URL is entered and selections are made
         document = read_url_content(url) #Pulls the text off the page
