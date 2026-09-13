@@ -22,7 +22,7 @@ MODELS = {
     },
 }
 
-CHAR_WARN_LIMIT = 10000
+CHAR_WARN_LIMIT = 8000
 MEMORY_TOKEN_BUDGET = 2000
 ANSWER_MAX_TOKENS = 2000
 
@@ -245,19 +245,19 @@ if st.session_state.pending_docs:
     )
     st.warning(
         f"The following page(s) exceed the {CHAR_WARN_LIMIT:,} character limit:\n\n"
-        f"{oversize}\n\nLoad everything in full, or cancel to load nothing."
+        f"{oversize}\n\nChoose how to continue."
     )
 
-    keep_col, cancel_col = st.columns(2)
+    keep_col, trim_col = st.columns(2)
 
     if keep_col.button("Use full text", type="primary"):
-        merged = {**st.session_state.documents, **st.session_state.pending_docs}
-        st.session_state.documents = {u: merged[u] for u in typed_urls if u in merged}
+        st.session_state.documents.update(st.session_state.pending_docs)
         st.session_state.pending_docs = {}
         st.rerun()
 
-    if cancel_col.button("Cancel"):
-        st.session_state.documents = {}
+    if trim_col.button(f"Truncate to {CHAR_WARN_LIMIT:,}"):
+        for url, text in st.session_state.pending_docs.items():
+            st.session_state.documents[url] = text[:CHAR_WARN_LIMIT]
         st.session_state.pending_docs = {}
         st.rerun()
 
