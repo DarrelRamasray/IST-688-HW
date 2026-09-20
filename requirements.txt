@@ -5,3 +5,5 @@ pypdf
 beautifulsoup4
 requests
 tiktoken
+chromadb
+pysqlite3-binary
