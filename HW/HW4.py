@@ -562,11 +562,13 @@ if 'messages' not in st.session_state:
     st.session_state.messages = [{'role': 'assistant', 'content': GREETING}]
 
 with st.sidebar:
-    st.subheader('Vector database')
+    st.subheader(":material/settings: **Vector Database:**")
+    #st.subheader('Vector database')
     st.caption(f'Organizations: {collection.count() // 2}')
     st.caption(f'Mini-documents: {collection.count()}')
 
-    st.subheader('Conversation')
+    st.subheader(":material/settings: **Conversation:**")
+    #st.subheader('Conversation')
     st.caption(f'Memory buffer: last {BUFFER_INTERACTIONS} interactions')
     st.caption(f'Turns so far: {len(st.session_state.messages) // 2}')
 
