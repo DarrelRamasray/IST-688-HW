@@ -22,7 +22,7 @@ EMBEDDING_MODEL = 'text-embedding-3-small'
 CHROMA_PATH = './ChromaDB_for_HW4'
 DATA_SUBFOLDER = Path('data') / 'HW04'
 
-REBUILD_COLLECTION = False #True for ONE, then back to False
+REBUILD_COLLECTION = True #True for ONE, then back to False
 
 EMBED_BATCH_SIZE = 100 #1026 chunks in ~11 API calls
 MAX_EMBED_CHARS = 20000 #Safety net
