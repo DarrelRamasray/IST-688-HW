@@ -287,41 +287,14 @@ def parse_events(block, org_name):
 
     return events
 
-
-#Chunking Method - HW4 Step 2.a.i.1 and 2.a.i.2
-#
-# METHOD: section-based semantic chunking. Every organization page becomes exactly two
-# mini-documents, cut along the seam the page itself already has:
-#
-#   chunk 1 "profile"   - organization name, description, website
-#   chunk 2 "logistics" - contact details, meeting day/time/location, officers,
-#                         upcoming events, and joining instructions
-#
-# WHY THIS METHOD AND NOT A FIXED-SIZE SPLIT:
-#
-# 1. The seam is structural, not arbitrary. All 513 pages share one heading skeleton, so
-#    the boundary lands between complete fields. A fixed-size split at the character
-#    midpoint would cut through the field list and strand a label like "President:" from
-#    its value, which is exactly the detail a student asks about.
-#
-# 2. The halves answer different questions. "What clubs are about robotics" matches
-#    descriptive prose; "when do they meet and who runs it" matches field data. Holding
-#    both in one blended chunk dilutes the embedding for both kinds of question.
-#
-# 3. The halves come out balanced, median 664 and 595 characters, so neither dominates
-#    retrieval and nothing approaches the embedding model's token limit.
-#
-# 4. Splitting normally costs context, because a chunk retrieved alone loses its identity.
-#    Both chunks repeat the ORGANIZATION and SOURCE header, and get_info_from_vectorDB
-#    always pulls the sibling half, so the LLM still sees the complete record.
-#
-# 5. Missing data is written out rather than omitted. 138 pages have no description and
-#    293 list no meeting day, so the chunk says "not listed on this organization page".
-#    That gives the model something explicit to repeat instead of a silence to fill in.
-#
-# Overlap was deliberately left out. It exists to stop a sentence being severed mid-thought,
-# but these pages average about 1,600 characters and the split falls between fields, so
-# overlap would duplicate tokens without protecting anything.
+#Chunking Method: Section Based Split
+#Method: Each page was split into two parts
+#   part1: name, description, website
+#   part2: email, meeting day and place, officers, events, and how to join
+#Reasoning
+#1. Page layout is nearly identical and cutting at a fixed number of characters could have separated labels from their values
+#2. part1 matches "what is this club", part2 matches "when do they meet"; separating them makes each easier to find
+#3. Each part is roughly the same size, so neither crowds out the other in search results
 
 def build_description(about_text, fields):
     parts = []
