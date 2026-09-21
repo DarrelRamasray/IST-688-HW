@@ -276,41 +276,7 @@ def parse_events(block, org_name):
     return events
 
 
-#Chunking Method - HW4 Step 2.a.i.1 and 2.a.i.2
-#
-# METHOD: section-based semantic chunking. Every organization page becomes exactly two
-# mini-documents, cut along the seam the page itself already has:
-#
-#   chunk 1 "profile"   - organization name, description, website
-#   chunk 2 "logistics" - contact details, meeting day/time/location, officers,
-#                         upcoming events, and joining instructions
-#
-# WHY THIS METHOD AND NOT A FIXED-SIZE SPLIT:
-#
-# 1. The seam is structural, not arbitrary. All 513 pages share one heading skeleton, so
-#    the boundary lands between complete fields. A fixed-size split at the character
-#    midpoint would cut through the field list and strand a label like "President:" from
-#    its value, which is exactly the detail a student asks about.
-#
-# 2. The halves answer different questions. "What clubs are about robotics" matches
-#    descriptive prose; "when do they meet and who runs it" matches field data. Holding
-#    both in one blended chunk dilutes the embedding for both kinds of question.
-#
-# 3. The halves come out balanced, median 664 and 595 characters, so neither dominates
-#    retrieval and nothing approaches the embedding model's token limit.
-#
-# 4. Splitting normally costs context, because a chunk retrieved alone loses its identity.
-#    Both chunks repeat the ORGANIZATION and SOURCE header, and get_info_from_vectorDB
-#    always pulls the sibling half, so the LLM still sees the complete record.
-#
-# 5. Missing data is written out rather than omitted. 138 pages have no description and
-#    293 list no meeting day, so the chunk says "not listed on this organization page".
-#    That gives the model something explicit to repeat instead of a silence to fill in.
-#
-# Overlap was deliberately left out. It exists to stop a sentence being severed mid-thought,
-# but these pages average about 1,600 characters and the split falls between fields, so
-# overlap would duplicate tokens without protecting anything.
-
+#Chunking Method
 def build_description(about_text, fields):
     parts = []
 
@@ -363,7 +329,6 @@ def build_logistics_chunk(name, url, contact, fields, officers, events):
 
     day = fields.get('Meeting Day', '')
     clock = fields.get('Meeting Time', '')
-    #66 pages set AM/PM but left day and time blank, giving a meaningless "Time: PM"
     meridiem = fields.get('AM/PM', '') if (day or clock) else ''
 
     schedule = ' '.join(part for part in (day, clock, meridiem) if part)
@@ -537,7 +502,7 @@ def create_hw4_vectordb():
             st.error(f'No organization pages were loaded from {folder}.')
 
     return collection
-#Conversation Memory - HW4 Step 3a
+#Convrsation Memory - HW4 Step 3a
 #The full history stays on screen; only this slice is sent to the model.
 def conversation_buffer(messages, interactions=BUFFER_INTERACTIONS):
     buffer = messages[-(interactions * 2):]
@@ -705,8 +670,6 @@ if 'messages' not in st.session_state:
     st.session_state.messages = [{'role': 'assistant', 'content': GREETING}]
 
 with st.sidebar:
-    st.subheader('⚙️ Settings:')
-
     st.subheader('Vector database')
     st.caption(f'Organizations: {collection.count() // 2}')
     st.caption(f'Mini-documents: {collection.count()}')
