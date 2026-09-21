@@ -1,6 +1,6 @@
 #DARREL RAMASRAY
 #IST 688 - Building HC-AI Apps
-#HW04 - An iSchool Chatbot Using RAG
+#HW04
 
 import streamlit as st
 from openai import OpenAI
@@ -16,28 +16,26 @@ try:
 except ImportError:
     pass
 
-#### CONFIGURATION ####
+#Configuration
 COLLECTION_NAME = 'HW4Collection'
 EMBEDDING_MODEL = 'text-embedding-3-small'
 CHROMA_PATH = './ChromaDB_for_HW4'
 DATA_SUBFOLDER = Path('data') / 'HW04'
 
-REBUILD_COLLECTION = False #True for ONE run to wipe and re-embed, then back to False
+REBUILD_COLLECTION = False #True for ONE, then back to False
 
-EMBED_BATCH_SIZE = 100 #1026 chunks in ~11 API calls instead of 1026 separate ones
-MAX_EMBED_CHARS = 20000 #Safety net only; the largest real chunk is about 3,100 chars
+EMBED_BATCH_SIZE = 100 #1026 chunks in ~11 API calls
+MAX_EMBED_CHARS = 20000 #Safety net
 
 CHAT_MODEL = 'gpt-5.4-mini'
-N_RESULTS = 8 #Chunks pulled from Chroma. Higher than MAX_ORGS because two chunks can share an org
-MAX_ORGS = 5 #Organizations actually sent to the LLM
+N_RESULTS = 8 #Chunks pulled from Chroma
+MAX_ORGS = 5
 BUFFER_INTERACTIONS = 5 #Step 3a: the memory conversation buffer holds the last 5 interactions
 
 FILENAME_PREFIX = 'syracuse.campuslabs.com_engage_organization_'
 ORG_URL_PREFIX = 'https://syracuse.campuslabs.com/engage/organization/'
 
-#### PAGE PARSING CONSTANTS ####
-#Every saved page carries the same headings, which is what makes the split below reliable.
-#'About' appears on all 513 pages, 'Additional Information' on 471, 'Officers' on 398.
+#Page Parsing Constants
 PAGE_SECTIONS = ['About', 'Contact Information', 'Additional Information', 'Contact',
                  'Public Events', 'Officers', 'Documents', 'News', 'Gallery']
 
@@ -74,17 +72,11 @@ LEADERSHIP_ORDER = ['President', 'Vice President', 'Secretary or Other E-Board M
 EVENT_DATE_PATTERN = re.compile(
     r'^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), ', re.IGNORECASE)
 
-#### QUERY ROUTING PATTERNS ####
-#A buffered chatbot gets questions like "when do they meet?" that name no organization.
-#Embedding those alone retrieves nothing useful, so the previous turn's organizations are
-#appended to the SEARCH query only (never to what the user sees).
+#Query Routing Patterns
 FOLLOW_UP_PATTERN = re.compile(
     r'\b(they|them|their|theirs|it|its|that one|this one|those|these|'
     r'the club|the org|the organization|the group)\b', re.IGNORECASE)
 
-#Semantic search cannot answer "which clubs meet on Sunday" because the embedding matches
-#the word "clubs", not the single token "Sunday". These drive a Chroma metadata filter
-#instead, the same approach Lab4 used to filter on course code.
 WEEKDAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
                  'Saturday', 'Sunday']
 
@@ -94,8 +86,7 @@ MEETING_INTENT_PATTERN = re.compile(r'\b(meet|meets|meeting|meetings)\b', re.IGN
 
 EVENT_INTENT_PATTERN = re.compile(r'\b(event|events|happening|going on)\b', re.IGNORECASE)
 
-#Overrides the rule above. Without this, "Are there any upcoming events?" was inheriting
-#the previous answer's organizations and echoing them back instead of searching fresh.
+#Overrides the rule above
 NEW_SEARCH_PATTERN = re.compile(
     r'\b(which|any|list|find|search|recommend|suggest|other|'
     r'is there|are there|what clubs|what organizations|what groups)\b', re.IGNORECASE)
@@ -103,9 +94,8 @@ NEW_SEARCH_PATTERN = re.compile(
 GREETING = ('Ask me about Syracuse University student organizations. I can look up what a '
             'group does, when and where it meets, who runs it, and how to join.')
 
-#### SYSTEM PROMPT ####
-#Rebuilt every turn with fresh context and never stored in st.session_state.messages,
-#so retrieved organizations cannot leak into a later, unrelated answer.
+#System Prompt
+#Rebuilt every turn with fresh context and never stored in st.session_state.messages
 RAG_SYSTEM_PROMPT = """You are an assistant that helps Syracuse University students find and
 join registered student organizations. You answer from organization pages taken from the
 university's 'Cuse Activities directory.
@@ -137,7 +127,7 @@ STYLE
 the joining instructions."""
 
 
-#### HTML PARSING ####
+#HTML Parsing
 def org_slug(file_name):
     stem = Path(file_name).stem
 
@@ -286,42 +276,7 @@ def parse_events(block, org_name):
     return events
 
 
-#### CHUNKING METHOD - HW4 STEP 2.a.i.1 AND 2.a.i.2 ####
-#
-# METHOD: section-based semantic chunking. Every organization page becomes exactly two
-# mini-documents, cut along the seam the page itself already has:
-#
-#   chunk 1 "profile"   - organization name, description, website
-#   chunk 2 "logistics" - contact details, meeting day/time/location, officers,
-#                         upcoming events, and joining instructions
-#
-# WHY THIS METHOD AND NOT A FIXED-SIZE SPLIT:
-#
-# 1. The seam is real, not arbitrary. All 513 pages share one heading skeleton, so the
-#    boundary lands between complete fields. A fixed-size split at the character midpoint
-#    would cut through the field list and strand a label like "President:" from its value,
-#    which is exactly the detail a student asks about.
-#
-# 2. The halves answer different questions. "What clubs are about robotics" matches
-#    descriptive prose; "when do they meet and who runs it" matches field data. Holding
-#    both in one blended chunk dilutes the embedding for both kinds of question.
-#
-# 3. The halves come out naturally balanced, median 664 and 595 characters, so neither
-#    dominates retrieval and nothing approaches the embedding model's token limit.
-#
-# 4. Splitting normally costs context: a chunk retrieved alone loses its identity. Both
-#    chunks repeat the ORGANIZATION and SOURCE header, so either can be cited by itself,
-#    and get_info_from_vectorDB always pulls the sibling half so the LLM sees the whole
-#    record anyway.
-#
-# 5. Missing data is written out rather than omitted. 138 pages have no description and
-#    293 list no meeting day, so the chunk says "not listed on this organization page".
-#    That gives the model something explicit to repeat instead of a silence to fill in.
-#
-# Overlap was deliberately left out. It exists to stop a sentence being severed mid-thought,
-# but these pages average only about 1,600 characters and the split falls between fields,
-# so overlap would duplicate tokens without protecting anything.
-
+#Chunking Method
 def build_description(about_text, fields):
     parts = []
 
@@ -374,8 +329,6 @@ def build_logistics_chunk(name, url, contact, fields, officers, events):
 
     day = fields.get('Meeting Day', '')
     clock = fields.get('Meeting Time', '')
-    #66 pages set AM/PM but left day and time blank, which produced "Meeting Day and
-    #Time: PM" on its own. The value is only meaningful alongside a day or a time.
     meridiem = fields.get('AM/PM', '') if (day or clock) else ''
 
     schedule = ' '.join(part for part in (day, clock, meridiem) if part)
@@ -441,7 +394,6 @@ def build_chunks(path):
         'source_url': url,
         'has_description': bool(description),
         'has_meeting_time': bool(fields.get('Meeting Day')),
-        #Stored as metadata so a weekday question can be answered by filtering, not similarity
         'meeting_day': fields.get('Meeting Day', '') if fields.get('Meeting Day') in WEEKDAY_NAMES else '',
         'has_contact_email': bool(contact.get('Email')),
         'event_count': len(events),
@@ -456,7 +408,7 @@ def build_chunks(path):
     ]
 
 
-#### EMBEDDING AND BUILDING THE COLLECTION ####
+#Embedding and Building the Collection
 def embed_batch(texts):
     client = st.session_state.openai_client
     response = client.embeddings.create(input=texts, model=EMBEDDING_MODEL)
@@ -526,7 +478,7 @@ def create_hw4_vectordb():
 
     collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
 
-    st.session_state.HW4_ChromaClient = chroma_client #Held so the client is not garbage collected
+    st.session_state.HW4_ChromaClient = chroma_client #Held
 
     folder = find_data_folder()
 
@@ -550,7 +502,7 @@ def create_hw4_vectordb():
             st.error(f'No organization pages were loaded from {folder}.')
 
     return collection
-#### CONVERSATION MEMORY - HW4 STEP 3a ####
+#Convrsation Memory - HW4 Step 3a
 #The full history stays on screen; only this slice is sent to the model.
 def conversation_buffer(messages, interactions=BUFFER_INTERACTIONS):
     buffer = messages[-(interactions * 2):]
@@ -595,15 +547,14 @@ def merge_org_record(record):
     return '\n'.join(lines)
 
 
-#### RETRIEVAL - HW4 STEP 3b ####
-#Metadata filtering for attribute questions that similarity search handles badly
+#Retrieval - HW4 Step 3b
+#Metadata filtering for attribute questions
 def detect_filters(question):
     conditions = []
     labels = []
 
     days = sorted({match.group(1).capitalize() for match in WEEKDAY_PATTERN.finditer(question)})
 
-    #The weekday alone is not enough: "what happens on Sunday" should not be narrowed
     if days and MEETING_INTENT_PATTERN.search(question):
         if len(days) == 1:
             conditions.append({'meeting_day': days[0]})
@@ -640,7 +591,7 @@ def get_info_from_vectorDB(collection, question, n_results=N_RESULTS, max_orgs=M
     where, labels = detect_filters(question)
     matched = count_matching_orgs(collection, where) if where else 0
 
-    if where and matched == 0: #Never return an empty context; fall back to plain similarity
+    if where and matched == 0: #Never return an empty context
         where, labels, matched = None, [], 0
 
     results = collection.query(query_embeddings=[query_embedding],
@@ -667,7 +618,7 @@ def get_info_from_vectorDB(collection, question, n_results=N_RESULTS, max_orgs=M
 
         records[slug][metadata['section']] = document
 
-    #Pull the other half of every matched organization so the LLM sees the complete record
+    #Pull the other half of every matched organization
     missing = [f'{slug}::{section}'
                for slug in order
                for section in ('profile', 'logistics')
@@ -694,7 +645,7 @@ def get_info_from_vectorDB(collection, question, n_results=N_RESULTS, max_orgs=M
     return context, organizations, description
 
 
-#### MAIN APP - HW4 STEP 4: CHAT INTERFACE ####
+#Main App - Step 4 - Chat Interface
 st.title(":blue[HW 4:] :grey[Deep] SU Org Chatbot")
 
 st.write('Ask about any of Syracuse University\'s registered student organizations. '
@@ -772,7 +723,7 @@ if prompt := st.chat_input('Ask about Syracuse student organizations...'):
             response = st.write_stream(stream)
 
     except Exception as error:
-        st.session_state.messages.pop() #Drop the failed turn so it cannot poison the buffer
+        st.session_state.messages.pop() #Drop the failed turn
         st.error(f'This request has failed: {error}')
         st.stop()
 
