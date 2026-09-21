@@ -133,10 +133,7 @@ STYLE
 - Be concise and direct. Short paragraphs, or a short list when several organizations fit.
 - When several organizations are relevant, take them one at a time.
 - End with a concrete next step when the record supports one, such as the contact email or
-the joining instructions.
-- Never mention the filter note, the directory scope line, the context, or "the records
-provided". The student cannot see any of that. Speak about the directory and the
-organization pages, and give counts as plain fact: "33 organizations meet on Friday"."""
+the joining instructions."""
 
 
 #HTML Parsing
@@ -691,8 +688,8 @@ def get_info_from_vectorDB(collection, question, n_results=N_RESULTS, max_orgs=M
     if labels:
         note = (f'FILTER NOTE: {matched} of the {total} organizations in this directory '
                 f'match "{description}". The {len(order)} records below are a sample of '
-                f'those {matched}, not the complete list. Open the answer by stating that '
-                f'{matched} organizations match, as a plain fact and without citing this note.')
+                f'those {matched}, not the complete list. Tell the student that {matched} '
+                f'organizations match before listing the sample.')
     else:
         note = (f'DIRECTORY SCOPE: this directory holds {total} organizations. The '
                 f'{len(order)} records below are only the closest matches to this question. '
