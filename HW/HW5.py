@@ -891,7 +891,7 @@ if 'hw5_messages' not in st.session_state:
     st.session_state.hw5_messages = [{'role': 'assistant', 'content': GREETING}]
 
 with st.sidebar:
-    st.subheader('⚙️ Settings:')
+    st.header(":material/settings: **Settings:**")
 
     st.subheader('Vector database')
     st.caption(f'Organizations: {collection.count() // 2}')
