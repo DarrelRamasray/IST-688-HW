@@ -59,15 +59,17 @@ EMBED_TEXT_CHARS = 8000
 #Checked Oct 2026: Sonnet 5.5 from Anthropic's pricing page, GPT-5.4 Mini from published price trackers.
 SCORERS = {
     'mini': {'vendor': 'openai', 'model': 'gpt-5.4-mini', 'label': 'GPT-5.4 Mini',
-             'secret': 'OPENAI_API_KEY', 'price_in': 0.75, 'price_out': 4.50},
+             'secret': 'OPENAI_API_KEY', 'price_in': 0.75, 'price_out': 4.50,
+             'temperature': 0}, #Accepted in the pilot: most repeatable scores
     'sonnet': {'vendor': 'anthropic', 'model': 'claude-sonnet-5-5', 'label': 'Claude Sonnet 5.5',
-               'secret': 'ANTHROPIC_API_KEY', 'price_in': 2.00, 'price_out': 10.00},
+               'secret': 'ANTHROPIC_API_KEY', 'price_in': 2.00, 'price_out': 10.00,
+               'temperature': None}, #Sonnet 5.5 rejects any non-default temperature
 }
 
 SCORE_BATCH_SIZE = 10 #Articles per scoring call
 RETRY_BATCH_SIZES = (5, 1) #Smaller batches, then single articles, for anything a pass missed
 SCORE_TEXT_CHARS = 1500 #Longest article is ~2,500 chars; the first 1,500 carry the story
-ANTHROPIC_MAX_TOKENS = 4000 #Anthropic requires a cap; 10 short entries need far less
+ANTHROPIC_MAX_TOKENS = 16000 #Anthropic requires a cap; it also covers any adaptive thinking. Billed on use only
 MAX_WORKERS = 4 #Parallel scoring calls
 PILOT_ARTICLES = 20
 
@@ -92,11 +94,22 @@ EVENT_TYPES = [
 
 TOOL_NAME = 'record_article_scores'
 
+#Bump this whenever the rubric or schema changes; cached scores from an older version are archived and redone
+RUBRIC_VERSION = 2 #v2: about-client check before scoring; completed deals count as opportunity, not risk
+
 RUBRIC_PROMPT = """You are a senior analyst at a large global law firm. The firm monitors news about
 its clients for two reasons: to spot legal RISK to a client, and to spot business OPPORTUNITY where a
 client is likely to need new legal work. You score news articles for both.
 
-Each article lists the client it was collected for. Score it for that client.
+Each article lists the client it was collected for. Work through every article in this order.
+
+STEP 1, ABOUT_CLIENT: decide whether the article is actually about the client company: the company
+itself, its business, its deals, or people acting for it. Answer false when the match is only a shared
+name, abbreviation, person, place, venue or product that happens to match the client's name, or when
+the client gets only a passing mention in a story about something else. If about_client is false,
+risk and opportunity must both be 0.
+
+STEP 2, score RISK and OPPORTUNITY for the client.
 
 RISK, 0 to 10: how likely the story creates legal exposure or an urgent legal need for the client.
 0 = no legal angle at all.
@@ -112,12 +125,15 @@ OPPORTUNITY, 0 to 10: how likely the story leads the client to need new legal wo
 7-8 = an announced acquisition, IPO, major restructuring, or large fundraise.
 9-10 = a transformative transaction such as a multi-billion-dollar merger or takeover bid.
 
+DEALS: a completed, closed, or court- or shareholder-approved deal is OPPORTUNITY (integration,
+financing and post-closing work), not RISK. Score risk for a deal only when the article reports a
+dispute, challenge, regulatory block, investigation or litigation over it.
+
 RULES
 - Score from the article text only. Do not use outside knowledge about the companies.
 - Stock-price commentary, analyst opinions, listicles, market-research press releases and product
 reviews score low on both unless they report a specific legal or transactional event.
-- If the article is not really about the client (the name is a coincidence or a passing mention),
-score both 0 or 1 and say so in the reason.
+- When about_client is false, the reason must say what the name actually refers to.
 - reason: one sentence of at most 25 words naming the specific event and why the firm should care.
 If both scores are 2 or lower, say briefly why the story is routine.
 - Call the record_article_scores tool once, with exactly one entry for every article ID provided."""
@@ -132,6 +148,8 @@ SCORE_SCHEMA = {
                 'type': 'object',
                 'properties': {
                     'id': {'type': 'string', 'description': 'The ARTICLE ID exactly as given.'},
+                    'about_client': {'type': 'boolean',
+                                     'description': 'True only if the article is actually about the client company.'},
                     'risk': {'type': 'integer', 'minimum': 0, 'maximum': 10,
                              'description': 'Legal risk to the client, 0 to 10.'},
                     'opportunity': {'type': 'integer', 'minimum': 0, 'maximum': 10,
@@ -140,7 +158,7 @@ SCORE_SCHEMA = {
                     'reason': {'type': 'string',
                                'description': 'One sentence, at most 25 words, naming the event and why it matters.'},
                 },
-                'required': ['id', 'risk', 'opportunity', 'event_type', 'reason'],
+                'required': ['id', 'about_client', 'risk', 'opportunity', 'event_type', 'reason'],
             },
         },
     },
@@ -209,8 +227,17 @@ CUSTOM_PATTERNS = {
 
 
 #General helpers
+RUN_LOG = CACHE_DIR / 'last_run.log' #Copy of everything printed, easy to open and copy from the editor
+
+
 def log(message=''):
     print(message, flush=True)
+
+    try:
+        with open(RUN_LOG, 'a', encoding='utf-8') as handle:
+            handle.write(str(message) + '\n')
+    except OSError:
+        pass
 
 
 def load_json(path, default):
@@ -488,19 +515,21 @@ def scoring_message(batch):
             f"TEXT: {row['document'][:SCORE_TEXT_CHARS]}"
         )
 
-    return 'Score each of the following articles.\n\n' + '\n\n---\n\n'.join(blocks)
+    return ('Score each of the following articles.\n\n' + '\n\n---\n\n'.join(blocks) +
+            f'\n\nRespond only by calling the {TOOL_NAME} tool, with one entry for each of the '
+            f'{len(batch)} article IDs above.')
 
 
-def call_openai(client, model, user_text, state):
+def call_openai(client, cfg, user_text, state):
     request = dict(
-        model=model,
+        model=cfg['model'],
         messages=[{'role': 'system', 'content': RUBRIC_PROMPT}, {'role': 'user', 'content': user_text}],
         tools=[OPENAI_TOOL],
         tool_choice={'type': 'function', 'function': {'name': TOOL_NAME}}, #Forces the structured answer
     )
 
-    if state.get('temperature_ok', True):
-        request['temperature'] = 0 #Most repeatable scores
+    if cfg['temperature'] is not None and state.get('temperature_ok', True):
+        request['temperature'] = cfg['temperature']
 
     try:
         response = client.chat.completions.create(**request)
@@ -527,18 +556,20 @@ def call_openai(client, model, user_text, state):
     return entries, int(usage.prompt_tokens), int(usage.completion_tokens)
 
 
-def call_anthropic(client, model, user_text, state):
+def call_anthropic(client, cfg, user_text, state):
     request = dict(
-        model=model,
+        model=cfg['model'],
         max_tokens=ANTHROPIC_MAX_TOKENS,
         system=RUBRIC_PROMPT, #Anthropic takes the system prompt as its own parameter
         messages=[{'role': 'user', 'content': user_text}],
         tools=[ANTHROPIC_TOOL],
-        tool_choice={'type': 'tool', 'name': TOOL_NAME}, #Forces the structured answer
+        #Sonnet 5.5 rejects forced tool use ('tool' / 'any'), so the prompt asks for the call and
+        #any reply without one counts as a failed batch and is retried in a later pass
+        tool_choice={'type': 'auto'},
     )
 
-    if state.get('temperature_ok', True):
-        request['temperature'] = 0
+    if cfg['temperature'] is not None and state.get('temperature_ok', True):
+        request['temperature'] = cfg['temperature']
 
     try:
         response = client.messages.create(**request)
@@ -565,6 +596,16 @@ def call_anthropic(client, model, user_text, state):
     return entries, int(response.usage.input_tokens), int(response.usage.output_tokens)
 
 
+def to_bool(value): #Accepts true/false even if a model sends them as text
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, str) and value.strip().lower() in ('true', 'false'):
+        return value.strip().lower() == 'true'
+
+    return None
+
+
 def to_score(value): #Clamps to 0-10 even if a model ignores the schema limits
     try:
         return max(0, min(10, int(round(float(value)))))
@@ -580,15 +621,20 @@ def clean_entries(entries, batch_ids):
             continue
 
         aid = str(entry.get('id', '')).strip()
+        about_client = to_bool(entry.get('about_client'))
         risk = to_score(entry.get('risk'))
         opportunity = to_score(entry.get('opportunity'))
 
-        if aid not in batch_ids or risk is None or opportunity is None:
-            continue
+        if aid not in batch_ids or about_client is None or risk is None or opportunity is None:
+            continue #Incomplete entries are retried in a later pass
+
+        if not about_client: #The rubric's rule, enforced in code in case a model breaks it
+            risk, opportunity = 0, 0
 
         event_type = entry.get('event_type')
 
         cleaned[aid] = {
+            'about_client': about_client,
             'risk': risk,
             'opportunity': opportunity,
             'event_type': event_type if event_type in EVENT_TYPES else 'Other routine news',
@@ -614,9 +660,17 @@ def score_with_model(key, articles, limit=None, workers=MAX_WORKERS):
     cfg = SCORERS[key]
     cache_file = CACHE_DIR / f'scores_{key}.json'
     cache = load_json(cache_file, {})
+    old_version = cache.get('rubric_version', 1)
 
-    if cache.get('model') != cfg['model']: #A different model means old scores no longer apply
-        cache = {'model': cfg['model'], 'scores': {}, 'usage': {'input_tokens': 0, 'output_tokens': 0, 'calls': 0}}
+    if cache and (cache.get('model') != cfg['model'] or old_version != RUBRIC_VERSION):
+        archive = CACHE_DIR / f'scores_{key}_rubric_v{old_version}.json' #Kept for the write-up's before/after
+        save_json(archive, cache)
+        log(f"  [{cfg['label']}] Rubric or model changed; archived old scores to {archive.name} and rescoring.")
+        cache = {}
+
+    if not cache:
+        cache = {'model': cfg['model'], 'rubric_version': RUBRIC_VERSION, 'scores': {},
+                 'usage': {'input_tokens': 0, 'output_tokens': 0, 'calls': 0}}
 
     records = articles.to_dict('records')
     valid_ids = {r['id'] for r in records}
@@ -642,7 +696,7 @@ def score_with_model(key, articles, limit=None, workers=MAX_WORKERS):
 
     def run_batch(batch):
         batch_ids = {r['id'] for r in batch}
-        entries, tokens_in, tokens_out = caller(client, cfg['model'], scoring_message(batch), state)
+        entries, tokens_in, tokens_out = caller(client, cfg, scoring_message(batch), state)
         return clean_entries(entries, batch_ids), tokens_in, tokens_out
 
     def record(scores, tokens_in, tokens_out):
@@ -671,7 +725,8 @@ def score_with_model(key, articles, limit=None, workers=MAX_WORKERS):
                 record(*run_batch(batches[0]))
             except Exception as error:
                 raise SystemExit(f"[{cfg['label']}] The first scoring call failed:\n  {error}\n"
-                                 f"Check the model ID '{cfg['model']}' and the {cfg['secret']} secret.")
+                                 f"Common causes: a wrong model ID ('{cfg['model']}'), a missing "
+                                 f"{cfg['secret']} secret, or a request setting this model does not support.")
 
             batches = batches[1:]
 
@@ -708,6 +763,31 @@ def score_with_model(key, articles, limit=None, workers=MAX_WORKERS):
     return cache, run_usage
 
 
+def agreement_summary(articles, caches, ids):
+    mini = caches['mini']['scores']
+    sonnet = caches['sonnet']['scores']
+    regex = dict(zip(articles['id'], articles['client_mentioned']))
+    n = len(ids)
+
+    if n == 0:
+        return '  No articles scored by both models yet.'
+
+    about_agree = sum(mini[i]['about_client'] == sonnet[i]['about_client'] for i in ids)
+    gaps = [abs(max(mini[i]['risk'], mini[i]['opportunity']) - max(sonnet[i]['risk'], sonnet[i]['opportunity']))
+            for i in ids]
+    lines = [
+        f'  Agreement on {n} articles scored by both models:',
+        f'    About-client answer matches: {about_agree} of {n}',
+        f'    Significance within 2 points: {sum(g <= 2 for g in gaps)} of {n} (average gap {sum(gaps) / n:.1f})',
+    ]
+
+    for key, cfg in SCORERS.items():
+        matches = sum(caches[key]['scores'][i]['about_client'] == bool(regex[i]) for i in ids)
+        lines.append(f"    {cfg['label']} about-client vs name-matching flag: {matches} of {n} match")
+
+    return '\n'.join(lines)
+
+
 def cost_of(cfg, usage):
     return usage['input_tokens'] / 1e6 * cfg['price_in'] + usage['output_tokens'] / 1e6 * cfg['price_out']
 
@@ -742,6 +822,7 @@ def build_metadata(row, scores):
 
     for key in SCORERS:
         entry = scores[key][row['id']]
+        metadata[f'{key}_about_client'] = bool(entry['about_client'])
         metadata[f'{key}_risk'] = int(entry['risk'])
         metadata[f'{key}_opportunity'] = int(entry['opportunity'])
         metadata[f'{key}_significance'] = round(max(entry['risk'], entry['opportunity']) / 10, 4)
@@ -802,6 +883,7 @@ def main():
         raise SystemExit(f'Could not find {CSV_PATH}. Put news.csv in data/HW07 first.')
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    RUN_LOG.write_text('', encoding='utf-8') #Each run starts a fresh log
     mode = 'PILOT' if args.pilot else 'FULL BUILD'
     log(f'=== HW7 database build ({mode}) ===')
     log(f'chromadb {chromadb.__version__} | Python {platform.python_version()}')
@@ -846,11 +928,15 @@ def main():
         line = (f"    {cfg['label']}: {usage['calls']} calls, {usage['input_tokens']:,} in / "
                 f"{usage['output_tokens']:,} out tokens, ${spent:.4f} this run, {usage['seconds']}s")
 
-        if args.pilot and usage['scored']:
-            remaining = len(articles) - len(caches[key]['scores'])
-            projected = spent / usage['scored'] * remaining
+        scored_so_far = len(caches[key]['scores'])
+
+        if args.pilot and scored_so_far:
+            per_article = cost_of(cfg, caches[key]['usage']) / scored_so_far #All cached calls, not just this run
+            remaining = len(articles) - scored_so_far
+            projected = per_article * remaining
             total_projection += projected
-            line += f" | projected for remaining {remaining}: ~${projected:.2f}"
+            line += (f"\n      {scored_so_far} scored so far at ~${per_article:.5f} per article | "
+                     f"projected for remaining {remaining}: ~${projected:.2f}")
 
         log(line)
 
@@ -858,8 +944,8 @@ def main():
 
     if args.pilot:
         log(f'    Projected cost to finish scoring with both models: ~${total_projection:.2f}')
-        log('\n  Sample scores (risk / opportunity), both models:')
-        shared = [i for i in articles['id'] if all(i in caches[k]['scores'] for k in SCORERS)][:6]
+        log('\n  Sample scores, both models (R = risk, O = opportunity):')
+        shared = [i for i in articles['id'] if all(i in caches[k]['scores'] for k in SCORERS)][:PILOT_ARTICLES]
 
         for aid in shared:
             row = articles[articles['id'] == aid].iloc[0]
@@ -867,7 +953,10 @@ def main():
 
             for key, cfg in SCORERS.items():
                 s = caches[key]['scores'][aid]
-                log(f"      {cfg['label']:<18} R{s['risk']} O{s['opportunity']} | {s['event_type']} | {s['reason']}")
+                about = 'about client' if s['about_client'] else 'NOT about client'
+                log(f"      {cfg['label']:<18} R{s['risk']} O{s['opportunity']} | {about} | {s['event_type']} | {s['reason']}")
+
+        log('\n' + agreement_summary(articles, caches, shared))
 
         log('\nPilot finished. The database was NOT written. Run without --pilot for the full build.')
         return
@@ -897,10 +986,13 @@ def main():
         'coverage_outlets_distribution': {str(k): int(v) for k, v in articles['coverage_outlets'].value_counts().sort_index().items()},
         'client_mentioned': int(articles['client_mentioned'].sum()),
         'articles_naming_other_clients': int((articles['other_clients'] != '').sum()),
+        'rubric_version': RUBRIC_VERSION,
+        'model_agreement': agreement_summary(articles, caches, list(articles['id'])).split('\n'),
         'scorers': {
             key: {
                 'model': cfg['model'],
                 'label': cfg['label'],
+                'about_client_true': int(sum(v['about_client'] for v in caches[key]['scores'].values())),
                 'temperature_zero': caches[key].get('temperature_zero', True),
                 'usage_total': caches[key]['usage'],
                 'cost_total_usd': round(cost_of(cfg, caches[key]['usage']), 4),

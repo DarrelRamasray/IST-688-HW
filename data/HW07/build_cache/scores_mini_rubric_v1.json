@@ -1,0 +1,131 @@
+{
+ "model": "gpt-5.4-mini",
+ "scores": {
+  "art_3eff9f1e7255": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "NEC marks its 125th anniversary with a CEO commentary; routine corporate storytelling with no specific legal or transactional event."
+  },
+  "art_fc3f66ad9bcb": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Lenovo appears to confirm new Legion Go models; routine product news with only a minor legal angle."
+  },
+  "art_2be1290625ed": {
+   "risk": 5,
+   "opportunity": 2,
+   "event_type": "Regulatory or government action",
+   "reason": "Tata Sons is seeking an RBI listing exemption after becoming nearly debt-free, creating a regulatory compliance issue."
+  },
+  "art_67a910623a60": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "Tencent Music is only mentioned in an executive job roundup, which is routine personnel news with no specific legal event."
+  },
+  "art_3603ac01a2f7": {
+   "risk": 8,
+   "opportunity": 8,
+   "event_type": "Deal, merger or investment",
+   "reason": "Hipgnosis shares were canceled after court approval of Blackstone's $1.6 billion deal, signaling completed transaction work and possible closing issues."
+  },
+  "art_a4472b09e2b0": {
+   "risk": 8,
+   "opportunity": 1,
+   "event_type": "Litigation or legal dispute",
+   "reason": "Eni Aluko is named in Joey Barton's criminal court case, creating reputational and legal sensitivity but no client transaction."
+  },
+  "art_2f6508d2644f": {
+   "risk": 1,
+   "opportunity": 2,
+   "event_type": "Financing or capital markets",
+   "reason": "Greylock is only referenced as an investor in a pre-seed funding announcement, a routine portfolio-company update."
+  },
+  "art_d4db94f701db": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "This is a consumer deals roundup about Lenovo discounts, which is routine marketing coverage with no legal event."
+  },
+  "art_51231a45a162": {
+   "risk": 4,
+   "opportunity": 5,
+   "event_type": "Regulatory or government action",
+   "reason": "Akamai announced plans for FedRAMP High and DoD accreditations, creating compliance work for regulated government contracting."
+  },
+  "art_81016a6339af": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "TSMC is only mentioned in a general semiconductor trends article, so the story is routine and not client-specific."
+  },
+  "art_739ab62da8ce": {
+   "risk": 1,
+   "opportunity": 2,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Routine AWS connectivity guidance for Salesforce; no dispute or transaction, just standard partner marketing."
+  },
+  "art_1bed44a4f524": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "The NEC mention is only the exhibition venue; this is routine event coverage with no legal or transactional issue."
+  },
+  "art_adfb3714bac9": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Financial results or market moves",
+   "reason": "A routine share buyback update; no dispute or regulatory issue is described."
+  },
+  "art_cacf264fb543": {
+   "risk": 2,
+   "opportunity": 3,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Workday joins a Salesforce AI service-agent partnership, a routine commercial collaboration with limited legal work."
+  },
+  "art_d1c9e490809e": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Leadership or governance",
+   "reason": "Northzone’s partner promotion is internal personnel news, not a legal or transactional event."
+  },
+  "art_92bb448b3cca": {
+   "risk": 2,
+   "opportunity": 6,
+   "event_type": "Deal, merger or investment",
+   "reason": "Leonard Green & Partners joined a strategic investment in Vital Care, which may require deal documentation and closing work."
+  },
+  "art_59fb064b0b32": {
+   "risk": 1,
+   "opportunity": 2,
+   "event_type": "Other routine news",
+   "reason": "A town MOU for development at an IBM site is routine property news with only a minor legal angle."
+  },
+  "art_7505f9c5dc99": {
+   "risk": 2,
+   "opportunity": 5,
+   "event_type": "Deal, merger or investment",
+   "reason": "Advent-backed Nuvei announced an acquisition in Brazil, creating ordinary cross-border deal and regulatory work."
+  },
+  "art_43b4620885be": {
+   "risk": 1,
+   "opportunity": 3,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Santander’s TikTok music contest is a marketing campaign, not a legal dispute or major transaction."
+  },
+  "art_2df3a13ca1b1": {
+   "risk": 1,
+   "opportunity": 0,
+   "event_type": "Financial results or market moves",
+   "reason": "This is just a stock-price blurb about Verizon, with no specific legal event."
+  }
+ },
+ "usage": {
+  "input_tokens": 4282,
+  "output_tokens": 1095,
+  "calls": 2
+ },
+ "temperature_zero": true
+}

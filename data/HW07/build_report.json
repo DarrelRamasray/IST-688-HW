@@ -1,0 +1,56 @@
+{
+ "built_at": "2026-10-07T17:41:07Z",
+ "chromadb_version": "1.5.9",
+ "python_version": "3.11.13",
+ "collection": "HW7News",
+ "embedding_model": "text-embedding-3-small",
+ "raw_rows": 1290,
+ "articles": 1086,
+ "duplicates_removed": 204,
+ "clients": 177,
+ "coverage_threshold": 0.82,
+ "coverage_outlets_distribution": {
+  "1": 793,
+  "2": 173,
+  "3": 63,
+  "4": 31,
+  "5": 22,
+  "6": 4
+ },
+ "client_mentioned": 864,
+ "articles_naming_other_clients": 136,
+ "rubric_version": 2,
+ "model_agreement": [
+  "  Agreement on 1086 articles scored by both models:",
+  "    About-client answer matches: 968 of 1086",
+  "    Significance within 2 points: 994 of 1086 (average gap 0.8)",
+  "    GPT-5.4 Mini about-client vs name-matching flag: 898 of 1086 match",
+  "    Claude Sonnet 5.5 about-client vs name-matching flag: 914 of 1086 match"
+ ],
+ "scorers": {
+  "mini": {
+   "model": "gpt-5.4-mini",
+   "label": "GPT-5.4 Mini",
+   "about_client_true": 798,
+   "temperature_zero": true,
+   "usage_total": {
+    "input_tokens": 240777,
+    "output_tokens": 64179,
+    "calls": 110
+   },
+   "cost_total_usd": 0.4694
+  },
+  "sonnet": {
+   "model": "claude-sonnet-5-5",
+   "label": "Claude Sonnet 5.5",
+   "about_client_true": 784,
+   "temperature_zero": true,
+   "usage_total": {
+    "input_tokens": 431136,
+    "output_tokens": 115867,
+    "calls": 112
+   },
+   "cost_total_usd": 2.0209
+  }
+ }
+}

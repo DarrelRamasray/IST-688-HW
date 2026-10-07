@@ -1,0 +1,131 @@
+{
+ "model": "claude-sonnet-5-5",
+ "scores": {
+  "art_3eff9f1e7255": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "NEC 125th anniversary CEO reflections piece; corporate branding content with no legal or transactional event, so routine."
+  },
+  "art_fc3f66ad9bcb": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Report on a website update hinting at new Legion GO handheld models; routine product speculation with no legal angle."
+  },
+  "art_2be1290625ed": {
+   "risk": 3,
+   "opportunity": 3,
+   "event_type": "Financial results or market moves",
+   "reason": "Tata Sons became debt-free using TCS funds (₹42,536 crore) to avoid RBI upper-layer NBFC listing; TCS only indirectly involved, though regulatory restructuring may follow."
+  },
+  "art_67a910623a60": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "Music industry executive job roundup with only a passing Tencent Music mention; routine personnel news not about the client."
+  },
+  "art_3603ac01a2f7": {
+   "risk": 3,
+   "opportunity": 6,
+   "event_type": "Deal, merger or investment",
+   "reason": "Hipgnosis shares canceled after Guernsey court approved Blackstone's $1.6B acquisition; completed deal may bring post-closing integration and financing work."
+  },
+  "art_a4472b09e2b0": {
+   "risk": 0,
+   "opportunity": 0,
+   "event_type": "Other routine news",
+   "reason": "Not about the client: 'Eni' refers to pundit Eni Aluko in the Joey Barton malicious communications case, a name coincidence."
+  },
+  "art_2f6508d2644f": {
+   "risk": 1,
+   "opportunity": 3,
+   "event_type": "Financing or capital markets",
+   "reason": "PuppyDog.io announced a pre-seed round and AI demo platform; Greylock connection is minor and the funding is small, so limited legal work."
+  },
+  "art_d4db94f701db": {
+   "risk": 0,
+   "opportunity": 0,
+   "event_type": "Other routine news",
+   "reason": "Laptop deals shopping listicle with no legal or transactional event; routine consumer content."
+  },
+  "art_51231a45a162": {
+   "risk": 2,
+   "opportunity": 4,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Akamai announced intent to pursue FedRAMP High and DoD IL4/5 accreditations, a regulated federal-market expansion needing compliance and government contracts counsel."
+  },
+  "art_81016a6339af": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "Generic trends article on semiconductor manufacturing with no specific TSMC legal or transactional event; routine."
+  },
+  "art_739ab62da8ce": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Other routine news",
+   "reason": "Technical how-to content on connecting Salesforce to AWS via Direct Connect; routine product documentation with no legal or transactional event."
+  },
+  "art_1bed44a4f524": {
+   "risk": 0,
+   "opportunity": 0,
+   "event_type": "Other routine news",
+   "reason": "NEC here is Birmingham's venue hosting a Titanic exhibition, not the client company; name coincidence, routine event coverage."
+  },
+  "art_adfb3714bac9": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Financing or capital markets",
+   "reason": "Routine daily share buy-back disclosure of 59,205 shares; ordinary regulatory notice with no new legal issue."
+  },
+  "art_cacf264fb543": {
+   "risk": 1,
+   "opportunity": 3,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Workday and Salesforce partner on an AI employee service agent; modest partnership with possible data and AI contracting work."
+  },
+  "art_d1c9e490809e": {
+   "risk": 0,
+   "opportunity": 1,
+   "event_type": "Leadership or governance",
+   "reason": "Profile of an internal promotion to partner at Northzone; routine personnel news with no legal event."
+  },
+  "art_92bb448b3cca": {
+   "risk": 1,
+   "opportunity": 5,
+   "event_type": "Deal, merger or investment",
+   "reason": "Leonard Green co-invests with Berkshire and Linden in Vital Care; a private equity deal in healthcare likely needing transaction and regulatory counsel."
+  },
+  "art_59fb064b0b32": {
+   "risk": 1,
+   "opportunity": 3,
+   "event_type": "Deal, merger or investment",
+   "reason": "Orangetown signed an MOU for redevelopment of the former IBM conference center site; real estate and land-use work, but IBM's role is peripheral."
+  },
+  "art_7505f9c5dc99": {
+   "risk": 1,
+   "opportunity": 5,
+   "event_type": "Deal, merger or investment",
+   "reason": "Nuvei, an Advent-linked portfolio company, agrees to buy Brazil's Pay2All; cross-border fintech acquisition with regulatory and M&A work, though Advent's role is indirect."
+  },
+  "art_43b4620885be": {
+   "risk": 1,
+   "opportunity": 1,
+   "event_type": "Product, expansion or partnership",
+   "reason": "Santander launches a TikTok music-band talent contest; marketing campaign with minor promotion-rules issues, otherwise routine."
+  },
+  "art_2df3a13ca1b1": {
+   "risk": 0,
+   "opportunity": 0,
+   "event_type": "Financial results or market moves",
+   "reason": "Routine stock price movement note with no legal or transactional event."
+  }
+ },
+ "usage": {
+  "input_tokens": 7685,
+  "output_tokens": 1978,
+  "calls": 2
+ },
+ "temperature_zero": true
+}
