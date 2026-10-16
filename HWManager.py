@@ -11,6 +11,6 @@ hw4_page = st.Page("HW/HW4.py", title="HW4", icon=":material/description:")
 hw5_page = st.Page("HW/HW5.py", title="HW5", icon=":material/description:")
 hw7_page = st.Page("HW/HW7.py", title="HW7", icon=":material/description:", default=True)  #Default page
 
-pg = st.navigation([hw5_page,hw4_page,hw3_page, hw2_page, hw1_page])  #HW5 listed first so it appears at the top of the sidebar
+pg = st.navigation([hw7_page,hw5_page,hw4_page,hw3_page, hw2_page, hw1_page])  #HW7 listed first so it appears at the top of the sidebar
 st.set_page_config(page_title="HW Manager", page_icon=":material/edit:")
 pg.run()
